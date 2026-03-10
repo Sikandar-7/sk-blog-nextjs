@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getUser, logout, AuthUser } from '@/lib/auth';
+import ThemeSwitcher from './ThemeSwitcher';
 
 export default function Navbar() {
     const path = usePathname();
@@ -63,6 +64,9 @@ export default function Navbar() {
                                 </li>
                             </>
                         )}
+                        <li>
+                            <ThemeSwitcher />
+                        </li>
                     </ul>
                 </div>
             </div>

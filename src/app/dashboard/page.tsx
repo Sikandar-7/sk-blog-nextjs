@@ -17,6 +17,9 @@ export default function DashboardPage() {
     const [deleting, setDeleting] = useState<number | null>(null);
     const [approving, setApproving] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<'my' | 'review'>('my');
+    const [pageMy, setPageMy] = useState(1);
+    const [pagePending, setPagePending] = useState(1);
+    const ITEMS_PER_PAGE = 5;
 
     useEffect(() => {
         const u = getUser();
@@ -65,6 +68,12 @@ export default function DashboardPage() {
     if (!user) return null;
 
     const isAdmin = user.is_admin ?? false;
+
+    const totalMyPages = Math.ceil(posts.length / ITEMS_PER_PAGE);
+    const paginatedPosts = posts.slice((pageMy - 1) * ITEMS_PER_PAGE, pageMy * ITEMS_PER_PAGE);
+
+    const totalPendingPages = Math.ceil(pendingAll.length / ITEMS_PER_PAGE);
+    const paginatedPending = pendingAll.slice((pagePending - 1) * ITEMS_PER_PAGE, pagePending * ITEMS_PER_PAGE);
 
     return (
         <div className="dashboard-page">
@@ -140,7 +149,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <div className="dash-posts-list">
-                                {posts.map(post => (
+                                {paginatedPosts.map(post => (
                                     <div key={post.id} className="dash-post-item">
                                         <div className="dash-post-info">
                                             <div className="dash-post-status">
@@ -153,12 +162,24 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="dash-post-actions">
                                             {post.status === 'publish' && <Link href={`/blog/${post.slug}`} className="dash-action-btn view">View</Link>}
+                                            <Link href={`/write?edit=${post.id}`} className="dash-action-btn view" style={{ background: 'var(--bg-3)', color: 'var(--navy)' }}>Edit</Link>
                                             <button onClick={() => handleDelete(post.id)} className="dash-action-btn delete" disabled={deleting === post.id}>
                                                 {deleting === post.id ? '...' : 'Delete'}
                                             </button>
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Pagination for My Articles */}
+                        {totalMyPages > 1 && (
+                            <div className="pagination" style={{ marginTop: 32 }}>
+                                <button className={`page-btn ${pageMy <= 1 ? 'disabled' : ''}`} onClick={() => setPageMy(p => Math.max(1, p - 1))}>←</button>
+                                {Array.from({ length: totalMyPages }, (_, i) => i + 1).map(p => (
+                                    <button key={p} className={`page-btn ${p === pageMy ? 'active' : ''}`} onClick={() => setPageMy(p)}>{p}</button>
+                                ))}
+                                <button className={`page-btn ${pageMy >= totalMyPages ? 'disabled' : ''}`} onClick={() => setPageMy(p => Math.min(totalMyPages, p + 1))}>→</button>
                             </div>
                         )}
                     </div>
@@ -183,7 +204,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <div className="dash-posts-list">
-                                {pendingAll.map(post => {
+                                {paginatedPending.map(post => {
                                     const authorName = post._embedded?.author?.[0]?.name || 'Unknown';
                                     return (
                                         <div key={post.id} className="dash-post-item review-item">
@@ -214,6 +235,17 @@ export default function DashboardPage() {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        )}
+
+                        {/* Pagination for Pending Articles */}
+                        {totalPendingPages > 1 && (
+                            <div className="pagination" style={{ marginTop: 32 }}>
+                                <button className={`page-btn ${pagePending <= 1 ? 'disabled' : ''}`} onClick={() => setPagePending(p => Math.max(1, p - 1))}>←</button>
+                                {Array.from({ length: totalPendingPages }, (_, i) => i + 1).map(p => (
+                                    <button key={p} className={`page-btn ${p === pagePending ? 'active' : ''}`} onClick={() => setPagePending(p)}>{p}</button>
+                                ))}
+                                <button className={`page-btn ${pagePending >= totalPendingPages ? 'disabled' : ''}`} onClick={() => setPagePending(p => Math.min(totalPendingPages, p + 1))}>→</button>
                             </div>
                         )}
                     </div>

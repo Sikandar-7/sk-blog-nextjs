@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getPostBySlug, getPosts, formatDate, stripHtml } from '@/lib/wordpress';
 import PostCard from '@/components/PostCard';
+import Comments from '@/components/Comments';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
@@ -93,6 +94,11 @@ export default async function SinglePostPage({ params }: Props) {
                         </div>
                     </div>
                 )}
+
+                {/* Comments Section */}
+                <div style={{ maxWidth: 800, margin: '0 auto' }}>
+                    <Comments postId={post.id} />
+                </div>
 
                 {/* Related Posts */}
                 {relatedPosts.length > 0 && (

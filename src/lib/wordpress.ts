@@ -84,3 +84,19 @@ export function formatDate(dateString: string): string {
 export function stripHtml(html: string): string {
     return html.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
 }
+
+export interface WPComment {
+    id: number;
+    author_name: string;
+    date: string;
+    content: { rendered: string };
+    status: string;
+}
+
+export async function getComments(postId: number): Promise<WPComment[]> {
+    const res = await fetch(`${WP_API}/comments?post=${postId}&per_page=50&order=asc`, {
+        next: { revalidate: 0 },
+    });
+    if (!res.ok) return [];
+    return res.json();
+}

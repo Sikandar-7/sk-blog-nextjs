@@ -2,7 +2,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getUser, createPost, createCategory, createTag } from '@/lib/auth';
+import { getUser, createPost, createCategory, createTag, uploadMedia, getPostById, updatePost } from '@/lib/auth';
 import { getCategories, WPCategory } from '@/lib/wordpress';
 
 const RichEditor = lazy(() => import('@/components/RichEditor'));
@@ -23,6 +23,10 @@ export default function WritePage() {
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitType, setSubmitType] = useState<'publish' | 'pending' | 'draft' | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [featuredMediaId, setFeaturedMediaId] = useState<number | null>(null);
+    const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
+    const [editModeId, setEditModeId] = useState<number | null>(null);
     const isAdmin = user?.is_admin ?? false;
 
     useEffect(() => {
@@ -30,6 +34,43 @@ export default function WritePage() {
         if (!u) { router.push('/login'); return; }
         setUser(u);
         getCategories().then(setCategories).catch(() => { });
+
+        // Check if editing an existing post
+        const urlParams = new URLSearchParams(window.location.search);
+        const editIdStr = urlParams.get('edit');
+        if (editIdStr) {
+            const pid = parseInt(editIdStr);
+            setEditModeId(pid);
+            getPostById(pid, u.token).then(post => {
+                if (post && (post.author === u.id || u.is_admin)) {
+                    setForm({
+                        title: post.title?.rendered || '',
+                        content: post.content?.rendered || '',
+                        excerpt: (post.excerpt?.rendered || '').replace(/<[^>]*>/g, '').trim(),
+                        featuredImage: ''
+                    });
+                    setSelectedCats(post.categories || []);
+
+                    const postTags: TagItem[] = [];
+                    const terms = post._embedded?.['wp:term'] || [];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    terms.forEach((termGroup: any[]) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        termGroup.forEach((term: any) => {
+                            if (term.taxonomy === 'post_tag') postTags.push({ id: term.id, name: term.name });
+                        });
+                    });
+                    setTags(postTags);
+
+                    if (post.featured_media > 0) {
+                        setFeaturedMediaId(post.featured_media);
+                        setFeaturedImagePreview(post._embedded?.['wp:featuredmedia']?.[0]?.source_url || null);
+                    }
+                } else {
+                    setError('You do not have permission to edit this post.');
+                }
+            });
+        }
     }, [router]);
 
     const toggleCat = (id: number) =>
@@ -70,6 +111,23 @@ export default function WritePage() {
 
     const removeTag = (id: number) => setTags(prev => prev.filter(t => t.id !== id));
 
+    // ── Upload Image ─────────────────────────────────────────
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+        setUploadingImage(true);
+        setError('');
+
+        const result = await uploadMedia(file, user.token);
+        if (result.success && result.mediaId && result.url) {
+            setFeaturedMediaId(result.mediaId);
+            setFeaturedImagePreview(result.url);
+        } else {
+            setError(result.error || 'Image upload failed.');
+        }
+        setUploadingImage(false);
+    };
+
     // ── Submit ───────────────────────────────────────────────
     const handleSubmit = async (status: 'publish' | 'pending' | 'draft') => {
         setError('');
@@ -81,14 +139,35 @@ export default function WritePage() {
         setLoading(true);
         setSubmitType(status);
 
-        const result = await createPost({
-            title: form.title,
-            content: form.content,
-            excerpt: form.excerpt,
-            categories: selectedCats,
-            tags: tags.map(t => t.id),
-            status,
-        }, user.token);
+        // Auto-generate excerpt if empty
+        let finalExcerpt = form.excerpt.trim();
+        if (!finalExcerpt) {
+            finalExcerpt = strippedContent.substring(0, 150);
+            if (strippedContent.length > 150) finalExcerpt += '...';
+        }
+
+        let result;
+        if (editModeId) {
+            result = await updatePost(editModeId, {
+                title: form.title,
+                content: form.content,
+                excerpt: finalExcerpt,
+                categories: selectedCats,
+                tags: tags.map(t => t.id),
+                featured_media_id: featuredMediaId,
+                status,
+            }, user.token);
+        } else {
+            result = await createPost({
+                title: form.title,
+                content: form.content,
+                excerpt: finalExcerpt,
+                categories: selectedCats,
+                tags: tags.map(t => t.id),
+                featured_media_id: featuredMediaId || undefined,
+                status,
+            }, user.token);
+        }
 
         setLoading(false);
         setSubmitType(null);
@@ -102,6 +181,7 @@ export default function WritePage() {
                 setSuccess('draft');
                 setForm({ title: '', content: '', excerpt: '', featuredImage: '' });
                 setSelectedCats([]); setTags([]);
+                setFeaturedMediaId(null); setFeaturedImagePreview(null);
             }
         } else {
             setError(result.error || 'Something went wrong. Is wp-blog.local running?');
@@ -116,12 +196,12 @@ export default function WritePage() {
             <div className="auth-page">
                 <div className="auth-card" style={{ maxWidth: 520, textAlign: 'center' }}>
                     <div style={{ fontSize: '3rem', marginBottom: 16 }}>🚀</div>
-                    <h2 className="auth-title">Article Published!</h2>
+                    <h2 className="auth-title">Article {editModeId ? 'Updated' : 'Published'}!</h2>
                     <p className="auth-subtitle" style={{ marginBottom: 24 }}>Your article is now <strong>live</strong> on the blog.</p>
                     <div className="auth-success" style={{ marginBottom: 24 }}>✅ Readers can now find and read your article!</div>
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                         <Link href="/blog" className="btn-primary" style={{ display: 'inline-flex' }}>View Blog →</Link>
-                        <button className="btn-draft" onClick={() => { setSuccess(''); setForm({ title: '', content: '', excerpt: '', featuredImage: '' }); setSelectedCats([]); setTags([]); }}>Write Another</button>
+                        {!editModeId && <button className="btn-draft" onClick={() => { setSuccess(''); setForm({ title: '', content: '', excerpt: '', featuredImage: '' }); setSelectedCats([]); setTags([]); }}>Write Another</button>}
                     </div>
                 </div>
             </div>
@@ -133,7 +213,7 @@ export default function WritePage() {
             <div className="auth-page">
                 <div className="auth-card" style={{ maxWidth: 520, textAlign: 'center' }}>
                     <div style={{ fontSize: '3rem', marginBottom: 16 }}>🎉</div>
-                    <h2 className="auth-title">Article Submitted!</h2>
+                    <h2 className="auth-title">Article {editModeId ? 'Update ' : ''}Submitted!</h2>
                     <p className="auth-subtitle" style={{ marginBottom: 24 }}>
                         Your article is now <strong>pending review</strong>. The admin will review it and publish it shortly.
                     </p>
@@ -142,7 +222,7 @@ export default function WritePage() {
                     </div>
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                         <Link href="/dashboard" className="btn-primary" style={{ display: 'inline-flex' }}>Go to Dashboard →</Link>
-                        <button className="btn-draft" onClick={() => { setSuccess(''); setForm({ title: '', content: '', excerpt: '', featuredImage: '' }); setSelectedCats([]); setTags([]); }}>Write Another</button>
+                        {!editModeId && <button className="btn-draft" onClick={() => { setSuccess(''); setForm({ title: '', content: '', excerpt: '', featuredImage: '' }); setSelectedCats([]); setTags([]); }}>Write Another</button>}
                     </div>
                 </div>
             </div>
@@ -157,11 +237,14 @@ export default function WritePage() {
                     <div className="write-header-inner">
                         <div>
                             <Link href="/dashboard" className="back-link">← Dashboard</Link>
-                            <h1 className="write-heading">New Article</h1>
+                            <h1 className="write-heading" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                {editModeId ? 'Edit Article' : 'New Article'}
+                                {editModeId && <span className="status-badge live" style={{ fontSize: '0.6rem', padding: '4px 8px' }}>Editing #{editModeId}</span>}
+                            </h1>
                         </div>
                         <div className="write-actions">
                             <button className="btn-draft" disabled={loading} onClick={() => handleSubmit('draft')}>
-                                {loading && submitType === 'draft' ? <span className="auth-spinner" style={{ borderTopColor: 'var(--text-muted)', borderColor: 'var(--border)' }} /> : '💾 Save Draft'}
+                                {loading && submitType === 'draft' ? <span className="auth-spinner" style={{ borderTopColor: 'var(--text-muted)', borderColor: 'var(--border)' }} /> : (editModeId ? '💾 Update Draft' : '💾 Save Draft')}
                             </button>
                             <button
                                 className="auth-btn"
@@ -171,7 +254,7 @@ export default function WritePage() {
                             >
                                 {loading && (submitType === 'pending' || submitType === 'publish')
                                     ? <span className="auth-spinner" />
-                                    : isAdmin ? '🚀 Publish Now' : '📤 Submit for Review'}
+                                    : isAdmin ? (editModeId ? '🚀 Update Post' : '🚀 Publish Now') : (editModeId ? '📤 Submit Update' : '📤 Submit for Review')}
                             </button>
                         </div>
                     </div>
@@ -227,11 +310,33 @@ export default function WritePage() {
                             >
                                 {loading && (submitType === 'pending' || submitType === 'publish')
                                     ? <span className="auth-spinner" />
-                                    : isAdmin ? '🚀 Publish Now' : '📤 Submit for Review'}
+                                    : isAdmin ? (editModeId ? '🚀 Update Post' : '🚀 Publish Now') : (editModeId ? '📤 Submit Update' : '📤 Submit for Review')}
                             </button>
                             <button className="btn-draft" disabled={loading} style={{ width: '100%' }} onClick={() => handleSubmit('draft')}>
-                                {loading && submitType === 'draft' ? '...' : '💾 Save as Draft'}
+                                {loading && submitType === 'draft' ? '...' : (editModeId ? '💾 Update as Draft' : '💾 Save as Draft')}
                             </button>
+                        </div>
+
+                        {/* Featured Image */}
+                        <div className="sidebar-card">
+                            <h3 className="sidebar-card-title">🖼️ Featured Image</h3>
+                            {featuredImagePreview ? (
+                                <div style={{ marginBottom: 16 }}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={featuredImagePreview} alt="Preview" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+                                    <button onClick={() => { setFeaturedMediaId(null); setFeaturedImagePreview(null); }} className="tag-remove" style={{ float: 'right', marginTop: 8, background: 'var(--bg-3)', color: 'var(--text-muted)' }}>Remove image</button>
+                                </div>
+                            ) : (
+                                <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: 20, textAlign: 'center', marginBottom: 12 }}>
+                                    <label style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ fontSize: '1.5rem', filter: 'grayscale(1)' }}>📸</div>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                            {uploadingImage ? 'Uploading...' : 'Click to Upload Image'}
+                                        </span>
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} disabled={uploadingImage} />
+                                    </label>
+                                </div>
+                            )}
                         </div>
 
                         {/* Excerpt */}

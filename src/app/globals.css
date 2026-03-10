@@ -40,7 +40,144 @@
   --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.14);
 }
 
+:root[data-theme='dark'] {
+  --bg: #000000;
+  --bg-2: #0a0a0a;
+  --bg-3: #141414;
+  --bg-dark: #000000;
+
+  --text: #f1f5f9;
+  --text-muted: #e2e8f0;
+  --text-light: #cbd5e1;
+
+  --navy: #f8fafc;
+  --border: #222222;
+  --border-2: #333333;
+
+  --accent-light: rgba(249, 115, 22, 0.15);
+
+  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow: 0 6px 32px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+
+/* ===== DARK MODE OVERRIDES ===== */
+[data-theme='dark'] .navbar {
+  background: rgba(0, 0, 0, 0.92);
+}
+
+/* Make all buttons orange in dark mode with dark text */
+[data-theme='dark'] .btn-primary,
+[data-theme='dark'] .btn-write,
+[data-theme='dark'] .btn-outline,
+[data-theme='dark'] .cat-btn,
+[data-theme='dark'] .navbar-logout-btn {
+  background: var(--accent) !important;
+  color: var(--bg-dark) !important;
+  /* Dark text on orange */
+  border-color: var(--accent) !important;
+  font-weight: 800 !important;
+}
+
+[data-theme='dark'] .btn-primary:hover,
+[data-theme='dark'] .btn-write:hover,
+[data-theme='dark'] .btn-outline:hover,
+[data-theme='dark'] .cat-btn:hover,
+[data-theme='dark'] .navbar-logout-btn:hover {
+  background: var(--accent-2) !important;
+  border-color: var(--accent-2) !important;
+  color: var(--bg-dark) !important;
+  box-shadow: 0 8px 24px var(--accent-glow) !important;
+}
+
+/* Specific text color fixes for dark mode */
+[data-theme='dark'] .navbar-links a {
+  color: var(--bg-dark) !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  /* Slight bg to make dark text readable if navbar is dark */
+}
+
+[data-theme='dark'] .navbar {
+  background: rgba(0, 0, 0, 0.95) !important;
+  /* Pure black navbar */
+}
+
+[data-theme='dark'] .join-cta-title,
+[data-theme='dark'] .writing-tips h3,
+[data-theme='dark'] .writing-tips ul li {
+  color: var(--bg-dark) !important;
+}
+
+[data-theme='dark'] .join-cta {
+  background: #000000 !important;
+  /* Solid black */
+}
+
+[data-theme='dark'] .writing-tips {
+  background: #000000 !important;
+}
+
+[data-theme='dark'] .auth-bottom-text a {
+  color: var(--bg-dark) !important;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .post-card,
+[data-theme='dark'] .post-card-horizontal {
+  background: var(--bg-2);
+  border-color: var(--border);
+}
+
+[data-theme='dark'] .post-card h2,
+[data-theme='dark'] .post-card h3,
+[data-theme='dark'] .post-card-horizontal h2,
+[data-theme='dark'] .post-card-horizontal h3 {
+  color: var(--text);
+}
+
+[data-theme='dark'] .post-card p,
+[data-theme='dark'] .post-card-horizontal p {
+  color: var(--text-muted);
+}
+
+[data-theme='dark'] .section-title,
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4 {
+  color: var(--text);
+}
+
+[data-theme='dark'] .hero-section,
+[data-theme='dark'] .newsletter-section,
+[data-theme='dark'] .cta-section {
+  background: var(--bg-2);
+}
+
+[data-theme='dark'] .hero-section * {
+  color: var(--text);
+}
+
+[data-theme='dark'] .navbar-links a {
+  color: var(--text-muted);
+}
+
+[data-theme='dark'] .category-badge {
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--accent);
+}
+
+[data-theme='dark'] input,
+[data-theme='dark'] textarea,
+[data-theme='dark'] select {
+  background: var(--bg-3) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
 *,
+
 *::before,
 *::after {
   box-sizing: border-box;
@@ -139,8 +276,20 @@ img {
 }
 
 .btn-write {
-  background: var(--navy) !important;
-  color: white !important;
+  background: var(--bg-dark) !important;
+  color: var(--white) !important;
+  padding: 9px 22px !important;
+  border-radius: 50px !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.2px !important;
+  transition: var(--transition) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2) !important;
+}
+
+.btn-write {
+  background: var(--bg-dark) !important;
+  color: var(--white) !important;
   padding: 9px 22px !important;
   border-radius: 50px !important;
   font-weight: 700 !important;
@@ -155,6 +304,24 @@ img {
   color: white !important;
   transform: translateY(-2px) !important;
   box-shadow: 0 8px 24px var(--accent-glow) !important;
+}
+
+.navbar-logout-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.navbar-logout-btn:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+  background: rgba(239, 68, 68, 0.05);
 }
 
 /* ============ FOOTER ============ */
@@ -351,7 +518,7 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: white;
+  background: var(--bg-2);
   color: var(--text);
   padding: 14px 32px;
   border-radius: 50px;
@@ -1680,7 +1847,7 @@ img {
 
 /* ============ JOIN CTA ============ */
 .join-cta {
-  background: var(--navy);
+  background: var(--bg-dark);
   border-radius: var(--radius);
   padding: 72px 48px;
   text-align: center;
