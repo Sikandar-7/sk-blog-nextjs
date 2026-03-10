@@ -41,18 +41,18 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: #000000;
-  --bg-2: #0a0a0a;
-  --bg-3: #141414;
-  --bg-dark: #000000;
+  --bg: #0f172a;
+  --bg-2: #1e293b;
+  --bg-3: #334155;
+  --bg-dark: #020617;
 
   --text: #f1f5f9;
   --text-muted: #e2e8f0;
   --text-light: #cbd5e1;
 
   --navy: #f8fafc;
-  --border: #222222;
-  --border-2: #333333;
+  --border: #334155;
+  --border-2: #475569;
 
   --accent-light: rgba(249, 115, 22, 0.15);
 
@@ -63,64 +63,7 @@
 
 /* ===== DARK MODE OVERRIDES ===== */
 [data-theme='dark'] .navbar {
-  background: rgba(0, 0, 0, 0.92);
-}
-
-/* Make all buttons orange in dark mode with dark text */
-[data-theme='dark'] .btn-primary,
-[data-theme='dark'] .btn-write,
-[data-theme='dark'] .btn-outline,
-[data-theme='dark'] .cat-btn,
-[data-theme='dark'] .navbar-logout-btn {
-  background: var(--accent) !important;
-  color: var(--bg-dark) !important;
-  /* Dark text on orange */
-  border-color: var(--accent) !important;
-  font-weight: 800 !important;
-}
-
-[data-theme='dark'] .btn-primary:hover,
-[data-theme='dark'] .btn-write:hover,
-[data-theme='dark'] .btn-outline:hover,
-[data-theme='dark'] .cat-btn:hover,
-[data-theme='dark'] .navbar-logout-btn:hover {
-  background: var(--accent-2) !important;
-  border-color: var(--accent-2) !important;
-  color: var(--bg-dark) !important;
-  box-shadow: 0 8px 24px var(--accent-glow) !important;
-}
-
-/* Specific text color fixes for dark mode */
-[data-theme='dark'] .navbar-links a {
-  color: var(--bg-dark) !important;
-  font-weight: 700 !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  /* Slight bg to make dark text readable if navbar is dark */
-}
-
-[data-theme='dark'] .navbar {
-  background: rgba(0, 0, 0, 0.95) !important;
-  /* Pure black navbar */
-}
-
-[data-theme='dark'] .join-cta-title,
-[data-theme='dark'] .writing-tips h3,
-[data-theme='dark'] .writing-tips ul li {
-  color: var(--bg-dark) !important;
-}
-
-[data-theme='dark'] .join-cta {
-  background: #000000 !important;
-  /* Solid black */
-}
-
-[data-theme='dark'] .writing-tips {
-  background: #000000 !important;
-}
-
-[data-theme='dark'] .auth-bottom-text a {
-  color: var(--bg-dark) !important;
-  font-weight: 700;
+  background: rgba(15, 23, 42, 0.92);
 }
 
 [data-theme='dark'] .post-card,
