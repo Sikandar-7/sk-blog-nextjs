@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Headless WordPress Blog (Next.js 14)
 
-## Getting Started
+A modern, full-stack headless blog built with Next.js 14 (App Router) and WordPress as a headless CMS.
 
-First, run the development server:
+## Features
+- **Frontend:** Next.js 14, React, TypeScript, CSS Variables (Premium Warm Editorial Theme)
+- **Backend:** WordPress REST API
+- **Auth:** WordPress Application Passwords, Custom REST endpoints for Registration/Login
+- **Editor:** TipTap Rich Text Editor for creating blog posts directly from the Next.js frontend
+- **Workflows:**
+  - Submit posts for review (Pending status)
+  - Admin Dashboard to Review, Approve (Publish), or Reject posts
+  - Category and Tag creation from frontend
 
+## Repository Structure
+- `/src` - The Next.js frontend code.
+- `/wordpress-setup` - The required WordPress configuration files to make the headless setup work.
+
+## WordPress Backend Setup
+
+To run this project, you need a local WordPress installation (e.g., using LocalWP) running at `http://wp-blog.local`.
+
+### 1. Configure WordPress API Plugin
+This project relies on custom REST API endpoints for user authentication and content creation.
+- Copy the file `wordpress-setup/sk-blog-auth.php` into your WordPress installation's `wp-content/mu-plugins` folder.
+- This creates endpoints like `/wp-json/sk-blog/v1/login` and `/wp-json/sk-blog/v1/register`.
+
+### 2. Generate Sample Content
+- Copy `wordpress-setup/add-blog-posts.php` to your `wp-content/` folder and visit `http://wp-blog.local/wp-content/add-blog-posts.php` to automatically generate Categories and Categories.
+
+### 3. Application Passwords
+- Go to WordPress Admin -> Users -> Your Profile.
+- Scroll down to "Application Passwords" and generate a new password to use with the Next.js frontend API.
+
+## Frontend Setup
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Configure Environment:
+Ensure you have `.env.local` configured:
+```env
+NEXT_PUBLIC_WP_API=http://wp-blog.local/wp-json/wp/v2
+```
+
+3. Run the development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
