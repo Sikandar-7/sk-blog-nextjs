@@ -35,6 +35,7 @@ const TOOLS: Toolbar[] = [
 export default function Editor() {
   const [checking, setChecking] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [allowed, setAllowed] = useState(true);
 
   const [title, setTitle] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -56,11 +57,22 @@ export default function Editor() {
   /* ── session ─────────────────────────────────────────── */
   useEffect(() => {
     if (!supabase) return setChecking(false);
-    supabase.auth.getUser().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
       if (!data.user) return (window.location.href = '/login');
       setUserId(data.user.id);
+
+      // Tell an unapproved writer why saving would fail, instead of letting
+      // them write a whole article and meet a policy error at the end.
+      const { data: me } = await supabase
+        .from('profiles')
+        .select('role, banned')
+        .eq('id', data.user.id)
+        .single();
+
+      setAllowed(!!me && me.banned === false && (me.role === 'writer' || me.role === 'admin'));
       setChecking(false);
-    });
+    })();
   }, []);
 
   /* ── local draft recovery: never lose writing to a stray refresh ── */
@@ -224,6 +236,20 @@ export default function Editor() {
   if (checking) return <p class="py-16 text-center text-muted">Checking your session…</p>;
   if (!supabase)
     return <p class="py-16 text-center text-muted">Writing is not configured on this deployment yet.</p>;
+
+  if (!allowed)
+    return (
+      <div class="rounded-2xl border border-border bg-surface px-6 py-16 text-center">
+        <p class="mb-2 text-lg font-bold">Your account is waiting for approval</p>
+        <p class="mx-auto mb-6 max-w-md text-muted">
+          New accounts start read-only. Once an admin grants you writing access, this page
+          becomes your editor — you will not need to sign up again.
+        </p>
+        <a href="/blog" class="inline-block rounded-xl bg-primary px-6 py-3 font-bold text-white">
+          Read the articles
+        </a>
+      </div>
+    );
 
   const field =
     'w-full rounded-xl bg-surface-2 border border-border px-4 py-3 text-fg placeholder:text-muted focus:border-primary focus:outline-none transition-colors';

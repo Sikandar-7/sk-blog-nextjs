@@ -80,19 +80,19 @@ export default function AdminPanel() {
     setComments((c.data as AdminComment[]) ?? []);
   }
 
-  async function setRole(id: string, role: AdminUser['role']) {
+  /** One call so an account can never end up half-approved. */
+  async function grant(id: string, patch: Partial<Pick<AdminUser, 'role' | 'banned'>>) {
     if (!supabase) return;
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', id);
+    const { error } = await supabase.from('profiles').update(patch).eq('id', id);
     if (error) return setError(error.message);
-    setUsers((list) => list.map((u) => (u.id === id ? { ...u, role } : u)));
+    setUsers((list) => list.map((u) => (u.id === id ? { ...u, ...patch } : u)));
   }
 
-  async function setBanned(id: string, banned: boolean) {
-    if (!supabase) return;
-    const { error } = await supabase.from('profiles').update({ banned }).eq('id', id);
-    if (error) return setError(error.message);
-    setUsers((list) => list.map((u) => (u.id === id ? { ...u, banned } : u)));
-  }
+  // Accounts arrive blocked, so approving means lifting the block *and*
+  // giving the role in the same update.
+  const approveWriter = (id: string) => grant(id, { banned: false, role: 'writer' });
+  const approveReader = (id: string) => grant(id, { banned: false, role: 'reader' });
+  const block = (id: string) => grant(id, { banned: true });
 
   async function removePost(id: string) {
     if (!supabase || !confirm('Delete this article permanently?')) return;
@@ -134,7 +134,7 @@ export default function AdminPanel() {
       </div>
     );
 
-  const pending = users.filter((u) => u.role === 'reader').length;
+  const pending = users.filter((u) => u.banned).length;
   const stats = [
     { label: 'Users', value: users.length },
     { label: 'Awaiting approval', value: pending },
@@ -216,35 +216,47 @@ export default function AdminPanel() {
                               : 'bg-muted/15 text-muted'
                       }`}
                     >
-                      {u.banned ? 'banned' : u.role}
+                      {/* A blocked account that has never been approved is
+                          waiting, not punished — say so. */}
+                      {u.banned ? (u.role === 'reader' ? 'pending' : 'blocked') : u.role}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-muted">{fmt(u.created_at)}</td>
                   <td class="px-4 py-3 text-muted">{u.post_count}</td>
                   <td class="px-4 py-3">
                     <div class="flex flex-wrap justify-end gap-1.5">
-                      {u.role === 'reader' && (
-                        <button
-                          onClick={() => setRole(u.id, 'writer')}
-                          class="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
-                        >
-                          Approve
-                        </button>
+                      {u.role !== 'admin' && (
+                        <>
+                          {/* Not already an approved writer → offer the grant */}
+                          {!(u.role === 'writer' && !u.banned) && (
+                            <button
+                              onClick={() => approveWriter(u.id)}
+                              title="Can comment and publish articles"
+                              class="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
+                            >
+                              Allow writing
+                            </button>
+                          )}
+                          {!(u.role === 'reader' && !u.banned) && (
+                            <button
+                              onClick={() => approveReader(u.id)}
+                              title="Can comment, but not publish"
+                              class="rounded-lg border border-border px-3 py-1.5 text-xs transition hover:border-primary hover:text-primary"
+                            >
+                              Comments only
+                            </button>
+                          )}
+                          {!u.banned && (
+                            <button
+                              onClick={() => block(u.id)}
+                              title="Read-only — cannot comment or publish"
+                              class="rounded-lg border border-border px-3 py-1.5 text-xs transition hover:border-primary hover:text-primary"
+                            >
+                              Block
+                            </button>
+                          )}
+                        </>
                       )}
-                      {u.role === 'writer' && (
-                        <button
-                          onClick={() => setRole(u.id, 'reader')}
-                          class="rounded-lg border border-border px-3 py-1.5 text-xs transition hover:border-primary hover:text-primary"
-                        >
-                          Revoke
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setBanned(u.id, !u.banned)}
-                        class="rounded-lg border border-border px-3 py-1.5 text-xs transition hover:border-primary hover:text-primary"
-                      >
-                        {u.banned ? 'Unban' : 'Ban'}
-                      </button>
                     </div>
                   </td>
                 </tr>
