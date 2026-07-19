@@ -1,0 +1,87 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+const portfolio = 'https://portfolio-five-black-18.vercel.app';
+
+const stack = [
+  'Next.js',
+  'Astro',
+  'React',
+  'TypeScript',
+  'Node & Express',
+  'Prisma',
+  'Supabase',
+  'Tailwind CSS',
+];
+---
+
+<BaseLayout
+  title="About"
+  description="Sikandar Abbas — full stack developer building web applications, e-commerce platforms and SaaS products."
+>
+  <section class="mx-auto max-w-6xl px-5 py-16 sm:py-20">
+    <div class="max-w-measure">
+      <h1
+        class="animate-fade-up font-display text-4xl font-extrabold tracking-tighter sm:text-5xl"
+      >
+        About
+      </h1>
+
+      <div class="animate-fade-up mt-8 space-y-5 text-lg leading-relaxed text-muted">
+        <p>
+          I&rsquo;m <span class="font-semibold text-fg">Sikandar Abbas</span>, a
+          full stack developer. I build web applications, e-commerce platforms
+          and SaaS products — mostly with Next.js, Node and Postgres.
+        </p>
+        <p>
+          This blog is where I write down what I actually learn while shipping:
+          the security bug I nearly published, the deployment that failed for a
+          reason nobody documents, the architecture decision I got wrong the
+          first time.
+        </p>
+        <p>
+          No tutorials rewritten from documentation. Just the things I wish
+          someone had told me before I lost an evening to them.
+        </p>
+      </div>
+
+      <div class="reveal mt-12">
+        <h2 class="mb-4 font-display text-xs font-bold uppercase tracking-[0.2em] text-muted">
+          What I work with
+        </h2>
+        <div class="flex flex-wrap gap-2">
+          {
+            stack.map((s) => (
+              <span class="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium">
+                {s}
+              </span>
+            ))
+          }
+        </div>
+      </div>
+
+      <div class="reveal mt-12 rounded-2xl border border-border bg-surface p-7">
+        <h2 class="font-display text-xl font-bold">Work with me</h2>
+        <p class="mt-2 text-muted">
+          I take on freelance projects — web apps, e-commerce and API platforms.
+        </p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <a
+            href={portfolio}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
+            >See my portfolio</a
+          >
+          <a
+            href="/blog"
+            class="rounded-xl border border-border px-5 py-2.5 text-sm font-bold transition-colors hover:border-primary"
+            >Read {posts.length} articles</a
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

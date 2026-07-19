@@ -1,0 +1,78 @@
+---
+import { formatDate, readingTime, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  featured?: boolean;
+}
+
+const { post, featured = false } = Astro.props;
+const { title, description, publishedAt, category, draft } = post.data;
+const mins = readingTime(post.body ?? '');
+---
+
+<article
+  class:list={[
+    'reveal group relative flex flex-col rounded-2xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/60',
+    featured && 'sm:p-8',
+  ]}
+>
+  <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
+    <span
+      class="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-semibold text-primary"
+      >{category}</span
+    >
+    {
+      draft && (
+        <span class="rounded-full border border-border bg-surface-2 px-2.5 py-1 font-semibold text-muted">
+          Draft
+        </span>
+      )
+    }
+    <time datetime={publishedAt.toISOString()} class="text-muted">
+      {formatDate(publishedAt)}
+    </time>
+    <span class="text-border" aria-hidden="true">·</span>
+    <span class="text-muted">{mins} min read</span>
+  </div>
+
+  <h3
+    class:list={[
+      'font-display font-bold leading-snug tracking-tight',
+      featured ? 'text-2xl sm:text-3xl' : 'text-xl',
+    ]}
+  >
+    <a href={`/blog/${post.id}/`} class="after:absolute after:inset-0">
+      <span
+        class="bg-gradient-to-r from-primary to-primary bg-[length:0%_2px] bg-left-bottom bg-no-repeat transition-[background-size] duration-400 group-hover:bg-[length:100%_2px]"
+        >{title}</span
+      >
+    </a>
+  </h3>
+
+  <p
+    class:list={[
+      'mt-3 leading-relaxed text-muted',
+      featured ? 'text-base' : 'text-sm',
+    ]}
+  >
+    {description}
+  </p>
+
+  <span
+    class="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
+  >
+    Read article
+    <svg
+      class="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14M13 6l6 6-6 6"></path>
+    </svg>
+  </span>
+</article>

@@ -1,0 +1,199 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import {
+  getPublishedPosts,
+  getRelatedPosts,
+  readingTime,
+  formatDate,
+} from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const related = await getRelatedPosts(post);
+const mins = readingTime(post.body ?? '');
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  type="article"
+  publishedAt={post.data.publishedAt.toISOString()}
+  author={post.data.author}
+  noindex={post.data.draft}
+>
+  <!-- reading progress -->
+  <div
+    id="progress"
+    class="fixed left-0 top-0 z-[60] h-0.5 w-0 bg-primary transition-[width] duration-150"
+    aria-hidden="true"
+  >
+  </div>
+
+  <article class="mx-auto max-w-6xl px-5 py-14">
+    <a
+      href="/blog"
+      class="mb-8 inline-flex items-center gap-1.5 text-sm font-semibold text-muted transition-colors hover:text-fg"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg
+      >
+      All articles
+    </a>
+
+    <header class="animate-fade-up max-w-measure">
+      <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+        <span
+          class="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 font-semibold text-primary"
+          >{post.data.category}</span
+        >
+        {
+          post.data.draft && (
+            <span class="rounded-full border border-border bg-surface-2 px-2.5 py-1 font-semibold text-muted">
+              Draft
+            </span>
+          )
+        }
+        <time datetime={post.data.publishedAt.toISOString()} class="text-muted">
+          {formatDate(post.data.publishedAt)}
+        </time>
+        <span class="text-border" aria-hidden="true">·</span>
+        <span class="text-muted">{mins} min read</span>
+      </div>
+
+      <h1
+        class="font-display text-4xl font-extrabold leading-[1.1] tracking-tighter sm:text-5xl"
+      >
+        {post.data.title}
+      </h1>
+      <p class="mt-5 text-lg leading-relaxed text-muted">
+        {post.data.description}
+      </p>
+
+      <div class="mt-7 flex items-center gap-3 border-t border-border pt-6">
+        <span
+          class="grid h-10 w-10 place-items-center rounded-full bg-primary text-sm font-black text-white"
+          >SA</span
+        >
+        <div class="text-sm">
+          <p class="font-semibold">{post.data.author}</p>
+          <p class="text-muted">Full Stack Developer</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="mt-12 gap-12 lg:flex lg:items-start">
+      <!-- Table of contents -->
+      {
+        toc.length > 1 && (
+          <aside class="mb-10 lg:sticky lg:top-24 lg:order-2 lg:mb-0 lg:w-56 lg:flex-shrink-0">
+            <h2 class="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-muted">
+              On this page
+            </h2>
+            <nav aria-label="Table of contents">
+              <ul class="space-y-2 border-l border-border text-sm">
+                {toc.map((h) => (
+                  <li>
+                    <a
+                      href={`#${h.slug}`}
+                      data-toc={h.slug}
+                      class:list={[
+                        'toc-link -ml-px block border-l-2 border-transparent py-0.5 text-muted transition-colors hover:text-fg',
+                        h.depth === 3 ? 'pl-6' : 'pl-4',
+                      ]}
+                    >
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        )
+      }
+
+      <div class="prose min-w-0 max-w-measure lg:order-1">
+        <Content />
+      </div>
+    </div>
+
+    {
+      post.data.tags.length > 0 && (
+        <div class="mt-14 flex flex-wrap gap-2 border-t border-border pt-8">
+          {post.data.tags.map((t) => (
+            <span class="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted">
+              #{t}
+            </span>
+          ))}
+        </div>
+      )
+    }
+  </article>
+
+  {
+    related.length > 0 && (
+      <section class="mx-auto max-w-6xl px-5 pb-8">
+        <h2 class="reveal mb-7 font-display text-xs font-bold uppercase tracking-[0.2em] text-muted">
+          Keep reading
+        </h2>
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {related.map((p) => (
+            <PostCard post={p} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+</BaseLayout>
+
+<script is:inline>
+  (() => {
+    // Reading progress
+    const bar = document.getElementById('progress');
+    const onScroll = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      const pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+      if (bar) bar.style.width = pct + '%';
+    };
+    document.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // Highlight the heading currently in view
+    const links = [...document.querySelectorAll('.toc-link')];
+    if (!links.length) return;
+    const targets = links
+      .map((l) => document.getElementById(l.dataset.toc ?? ''))
+      .filter(Boolean);
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          links.forEach((l) => {
+            const on = l.dataset.toc === e.target.id;
+            l.classList.toggle('border-primary', on);
+            l.classList.toggle('text-fg', on);
+            if (on) l.setAttribute('aria-current', 'location');
+            else l.removeAttribute('aria-current');
+          });
+        });
+      },
+      { rootMargin: '-80px 0px -70% 0px' }
+    );
+    targets.forEach((t) => io.observe(t));
+  })();
+</script>

@@ -1,0 +1,136 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPublishedPosts, getCategories } from '../../lib/posts';
+
+const posts = await getPublishedPosts();
+const categories = await getCategories();
+---
+
+<BaseLayout
+  title="Articles"
+  description="Every article — architecture, security, performance and the practical side of shipping web software."
+>
+  <section class="mx-auto max-w-6xl px-5 py-16 sm:py-20">
+    <h1
+      class="animate-fade-up font-display text-4xl font-extrabold tracking-tighter sm:text-5xl"
+    >
+      Articles
+    </h1>
+    <p class="animate-fade-up mt-4 max-w-lg text-muted">
+      {posts.length} {posts.length === 1 ? 'article' : 'articles'} on building,
+      breaking and fixing things on the web.
+    </p>
+
+    <!-- Search + filter, no JS framework needed -->
+    <div class="mt-9 flex flex-col gap-4">
+      <label class="relative block max-w-md">
+        <span class="sr-only">Search articles</span>
+        <svg
+          class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.5-3.5"></path>
+        </svg>
+        <input
+          id="search"
+          type="search"
+          placeholder="Search articles…"
+          autocomplete="off"
+          class="w-full rounded-xl border border-border bg-surface py-3 pl-11 pr-4 text-sm text-fg placeholder:text-muted focus:border-primary focus:outline-none"
+        />
+      </label>
+
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Filter by topic">
+        <button
+          type="button"
+          data-cat="all"
+          class="cat-btn rounded-lg border border-primary bg-primary px-3.5 py-1.5 text-xs font-bold text-white transition-colors"
+          >All</button
+        >
+        {
+          categories.map((c) => (
+            <button
+              type="button"
+              data-cat={c.name}
+              class="cat-btn rounded-lg border border-border bg-surface px-3.5 py-1.5 text-xs font-bold text-muted transition-colors hover:border-primary hover:text-fg"
+            >
+              {c.name}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+
+    <div id="post-grid" class="mt-10 grid gap-5 sm:grid-cols-2">
+      {
+        posts.map((post) => (
+          <div
+            class="post-item"
+            data-category={post.data.category}
+            data-search={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')}`.toLowerCase()}
+          >
+            <PostCard post={post} />
+          </div>
+        ))
+      }
+    </div>
+
+    <p id="empty" class="hidden py-20 text-center text-muted">
+      Nothing matched. Try a different word.
+    </p>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  (() => {
+    const search = document.getElementById('search');
+    const items = [...document.querySelectorAll('.post-item')];
+    const empty = document.getElementById('empty');
+    const buttons = [...document.querySelectorAll('.cat-btn')];
+    let category = 'all';
+
+    const active = ['border-primary', 'bg-primary', 'text-white'];
+    const idle = ['border-border', 'bg-surface', 'text-muted'];
+
+    const apply = () => {
+      const q = (search?.value ?? '').trim().toLowerCase();
+      let shown = 0;
+      items.forEach((el) => {
+        const okCat =
+          category === 'all' || el.dataset.category === category;
+        const okText = !q || (el.dataset.search ?? '').includes(q);
+        const show = okCat && okText;
+        el.classList.toggle('hidden', !show);
+        if (show) shown++;
+      });
+      empty?.classList.toggle('hidden', shown > 0);
+    };
+
+    search?.addEventListener('input', apply);
+    search?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        search.value = '';
+        apply();
+      }
+    });
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        category = btn.dataset.cat ?? 'all';
+        buttons.forEach((b) => {
+          const on = b === btn;
+          b.classList.remove(...active, ...idle);
+          b.classList.add(...(on ? active : idle));
+        });
+        apply();
+      });
+    });
+  })();
+</script>

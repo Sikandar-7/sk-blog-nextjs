@@ -1,0 +1,299 @@
+@import 'tailwindcss';
+
+/* Self-hosted variable fonts — no external request, no layout shift */
+@import '@fontsource-variable/sora';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* ───────────────────────────────────────────────────────────
+   Brand tokens — kept in step with the portfolio so the two
+   sites read as one identity.
+   ─────────────────────────────────────────────────────────── */
+:root {
+  --bg: #0c0c0c;
+  --surface: #131313;
+  --surface-2: #1a1a1a;
+  --fg: #ffffff;
+  --muted: #9a9a9a;
+  --border: #262626;
+  --primary: #ff5733;
+  --secondary: #bfff3f;
+  --selection: #ff573333;
+}
+
+/* Light mode — a blog is read for minutes at a time, so it earns a real
+   light theme rather than an inverted afterthought. */
+:root[data-theme='light'] {
+  --bg: #fcfcfa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f0;
+  --fg: #111111;
+  --muted: #5c5c5c;
+  --border: #e4e4de;
+  --primary: #e8431f;
+  --secondary: #6b9f00;
+  --selection: #ff573322;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+
+  --font-display: 'Sora Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  /* Reading measure — ~68 characters is the comfortable line length */
+  --spacing-measure: 68ch;
+}
+
+/* ───────────────────────────────────────────────────────────
+   Base
+   ─────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  /* Theme flip should feel deliberate, not jarring */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--fg);
+}
+
+/* Visible keyboard focus everywhere — non-negotiable */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 999;
+  background: var(--primary);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 0 0 10px 0;
+  font-weight: 700;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* ───────────────────────────────────────────────────────────
+   Motion — every animation is opt-out safe
+   ─────────────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in {
+  animation: fade-in 0.5s ease both;
+}
+
+/* Scroll-triggered reveal, driven by an IntersectionObserver in BaseLayout */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────
+   Article typography — the part that actually gets read
+   ─────────────────────────────────────────────────────────── */
+.prose {
+  font-size: 1.075rem;
+  line-height: 1.8;
+  color: var(--fg);
+}
+.prose > * + * {
+  margin-top: 1.5em;
+}
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.25;
+  scroll-margin-top: 6rem;
+  margin-top: 2.2em;
+  margin-bottom: 0.7em;
+}
+.prose h2 {
+  font-size: 1.85rem;
+  letter-spacing: -0.02em;
+}
+.prose h3 {
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+}
+.prose p,
+.prose li {
+  color: color-mix(in oklab, var(--fg) 88%, transparent);
+}
+.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: opacity 0.2s ease;
+}
+.prose a:hover {
+  opacity: 0.75;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+.prose ul {
+  list-style: disc;
+}
+.prose ol {
+  list-style: decimal;
+}
+.prose li::marker {
+  color: var(--primary);
+}
+.prose blockquote {
+  border-left: 3px solid var(--primary);
+  padding: 0.2em 0 0.2em 1.2em;
+  font-style: italic;
+  color: var(--muted);
+}
+.prose img {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 3em 0;
+}
+.prose code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  color: var(--secondary);
+}
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem;
+  overflow-x: auto;
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 0.6em 0.9em;
+  text-align: left;
+}
+.prose th {
+  background: var(--surface-2);
+  font-weight: 700;
+}
