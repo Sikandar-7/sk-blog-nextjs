@@ -1,0 +1,116 @@
+---
+title: 'Two Vercel Deploy Errors That Had Nothing To Do With My Code'
+description: 'A backend that ran perfectly on my machine failed twice on Vercel. Both failures were configuration that had been quietly wrong for months, hidden because nothing had ever exercised it.'
+publishedAt: 2026-07-20
+category: 'Engineering'
+tags: ['vercel', 'deployment', 'prisma', 'typescript']
+---
+
+I had an Express API that ran fine locally, typechecked clean, and had a
+`vercel.json` sitting in the repo. Someone had clearly set it up for
+deployment.
+
+It had never actually been deployed. When I tried, it failed twice — and
+neither failure was in the application code.
+
+## Error one: no Next.js version detected
+
+```
+Warning: Could not identify Next.js version.
+Error: No Next.js version detected. Make sure your package.json has "next"
+in either "dependencies" or "devDependencies".
+```
+
+The project used to be Next.js. I had replaced it with something else, pushed,
+and Vercel dutifully kept looking for Next.
+
+**Vercel's Framework Preset is a saved project setting, not something
+re-detected on every build.** Once it is pinned, changing your `package.json`
+does not change its mind.
+
+Fix: Settings → Build & Deployment → Framework Preset → pick the correct
+framework → redeploy. The build command and output directory follow.
+
+Worth pairing with a second habit: when you redeploy after changing
+configuration, **uncheck "Use existing Build Cache"**. A cached build will
+happily reuse the old, wrong output and leave you debugging a phantom.
+
+## Error two: the entry point was outside the compiler's reach
+
+Vercel runs an Express app through a serverless entry file:
+
+```ts
+// api/index.ts
+import app from '../src/server'
+export default app
+```
+
+Meanwhile `tsconfig.json` said:
+
+```json
+{
+  "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
+  "include": ["src/**/*"]
+}
+```
+
+Look at those two together. The entry point Vercel builds lives in `api/`.
+TypeScript was told the project is `src/` and only `src/`.
+
+Locally this never surfaced, because `tsc --noEmit` obediently ignored a file
+it had been told not to look at. My typecheck passed while the file that
+actually gets deployed was never checked at all.
+
+Adding it to the project shows the problem immediately:
+
+```
+error TS6059: File 'api/index.ts' is not under 'rootDir' 'src'.
+'rootDir' is expected to contain all source files.
+```
+
+The fix is small:
+
+```json
+{
+  "compilerOptions": { "rootDir": "./", "outDir": "./dist" },
+  "include": ["src/**/*", "api/**/*"]
+}
+```
+
+Moving `rootDir` up changes the emitted layout to `dist/src/server.js`, so the
+start script needs to follow:
+
+```diff
+- "start": "node dist/server.js"
++ "start": "node dist/src/server.js"
+```
+
+## The Prisma one, before it happened
+
+There is a third failure I did not hit, because I had been bitten by it
+before: Vercel caches `node_modules`, which can skip the postinstall that
+generates the Prisma client. The build then dies on `@prisma/client did not
+initialize yet`.
+
+One line prevents it:
+
+```json
+"scripts": {
+  "postinstall": "prisma generate"
+}
+```
+
+## What the two failures had in common
+
+Both had been wrong for months. Neither could be seen locally, because local
+development never ran the path that used them — `npm run dev` does not care
+about the Framework Preset, and `tsc` does not check files you excluded.
+
+They surfaced the first time something new exercised them. Which is the actual
+lesson: **an unused configuration is an untested configuration.** A
+`vercel.json` that has never deployed is not evidence that deployment works;
+it is evidence that somebody once intended it to.
+
+If you have a project with deploy config that has never run, treat that config
+as unknown rather than working. Mine looked completely reasonable, and two
+lines of it were wrong.

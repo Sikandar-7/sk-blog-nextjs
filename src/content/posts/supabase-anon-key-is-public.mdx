@@ -1,0 +1,151 @@
+---
+title: 'Your Supabase Key Is Public. RLS Is the Only Thing Protecting You'
+description: 'The anon key sits in your JavaScript bundle where anyone can read it. That is by design — but only if row level security is doing its job. Here is how to test that it is.'
+publishedAt: 2026-07-20
+category: 'Security'
+tags: ['supabase', 'postgres', 'security', 'rls']
+---
+
+When you wire up Supabase in a frontend, you put a key in the browser:
+
+```ts
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.PUBLIC_SUPABASE_KEY,
+)
+```
+
+Anyone can open dev tools and read that key. This alarms people, and then
+someone reassures them that it is "the public key, it's fine", and the
+conversation ends there.
+
+It is fine — but only because of something else you are supposed to have set
+up. If you skip that part, the key really is as dangerous as it looks.
+
+## What the key actually grants
+
+The publishable key does not identify a person. It identifies your project and
+says "this request is anonymous". What that anonymous caller is allowed to do
+is decided entirely by **row level security** policies on your tables.
+
+No policies, RLS off: the key is a full read and write handle on your
+database, published in your JavaScript.
+
+So the question is never "is my key safe". It is **"what can somebody do with
+my key?"** — and that has a testable answer.
+
+## Testing it with curl
+
+You do not need a tool. Take your own public key and try to do something you
+should not be able to do.
+
+Writing a post as a user who does not exist:
+
+```bash
+curl -X POST "$URL/rest/v1/posts" \
+  -H "apikey: $PUBLIC_KEY" \
+  -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"hack-test","title":"Unauthorized","content":"should not work",
+       "author_id":"00000000-0000-0000-0000-000000000000"}'
+```
+
+What you want back:
+
+```json
+{
+  "code": "42501",
+  "message": "new row violates row-level security policy for table \"posts\""
+}
+```
+
+That error is the sound of your database defending itself. If instead you get
+a `201` and a row appears, your site is writable by the internet.
+
+Do the same for reads:
+
+```bash
+curl "$URL/rest/v1/profiles?select=*" -H "apikey: $PUBLIC_KEY" ...
+```
+
+## The read I got wrong
+
+That last command is how I found my own mistake. I had written this policy
+early on, and it looked reasonable:
+
+```sql
+create policy "profiles are viewable by everyone"
+  on public.profiles for select using (true);
+```
+
+Comment authors need names and avatars, so profiles should be readable.
+Fine.
+
+Then I added email addresses to the same table for the admin panel. The policy
+did not change, because policies apply to **rows**, not columns. `select
+using (true)` now meant: every email address of every registered user,
+available to anyone who views source.
+
+The fix is to stop treating one table as one audience:
+
+```sql
+-- full row: yourself, or an admin
+create policy "own profile or admin"
+  on public.profiles for select
+  using (auth.uid() = id or public.is_admin());
+
+-- public identity only — note which columns are absent
+create view public.public_profiles as
+select id, username, full_name, avatar_url
+from public.profiles
+where banned = false;
+```
+
+Comments read the view. Nothing else changed in the app, and emails stopped
+being public. Verifying it is one command:
+
+```bash
+$ curl "$URL/rest/v1/profiles?select=username,email" -H "apikey: $KEY" ...
+[]
+```
+
+An empty array, not an error — RLS does not tell you what you are missing. It
+just does not give it to you.
+
+## One trap worth knowing
+
+If a policy on `profiles` needs to check something *in* `profiles` — "is this
+user an admin?" — the naive version recurses forever. Postgres evaluates the
+policy, which runs a query, which triggers the policy.
+
+The way out is a `security definer` function, which runs outside RLS:
+
+```sql
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin' and banned = false
+  );
+$$;
+```
+
+Then policies call `public.is_admin()` and nothing loops. Note
+`set search_path` — a `security definer` function without it is its own
+security problem.
+
+## The habit worth keeping
+
+Hiding a page in your UI is not access control. Anyone can call the API
+directly with the key from your bundle, and your React router is not there to
+stop them.
+
+So after writing any policy, go and try to break it with curl using nothing
+but the public key. Try to read a table you should not see. Try to write a row
+as somebody else. Try to read another user's draft.
+
+Every one of those attempts should come back empty or refused. If any of them
+succeeds, you have found the bug before someone else did — which is the entire
+point.

@@ -1,0 +1,155 @@
+---
+title: 'I Audited My Own Food Delivery App and Found Three Ways to Eat for Free'
+description: 'A multi-panel ordering platform I had already shipped turned out to leak customer addresses, hand out unlimited coupons, and give away paid toppings. All three came from the same habit.'
+publishedAt: 2026-07-20
+category: 'Security'
+tags: ['security', 'api', 'express', 'prisma']
+featured: true
+---
+
+I built a food delivery platform — customer, restaurant, rider and admin
+panels, JWT auth, roles, the lot. It worked. Orders went in, dashboards
+updated, everything looked finished.
+
+Then I read the order route properly, and found three separate ways to take
+money out of it.
+
+None of them were exotic. All three came from the same habit: **checking who
+someone is, and forgetting to check what they are allowed to touch.**
+
+## One: every order was readable by everyone
+
+Here is the endpoint that fetches a single order.
+
+```ts
+router.get('/:id', authMiddleware, async (req, res) => {
+  const order = await prisma.order.findUnique({
+    where: { id: req.params.id },
+    include: { customer: { select: { fullName: true, phone: true } } },
+  })
+  return res.json({ success: true, data: order })
+})
+```
+
+`authMiddleware` is there, so this feels protected. It is not. It proves the
+caller is *a* user. It never asks whether they are *this order's* user.
+
+Sign in with any account, walk the order IDs, and you get other people's
+names, phone numbers and delivery addresses. That is somebody's home address,
+handed out to anyone with a login.
+
+The cancel route had the same shape, so you could also cancel strangers'
+dinners. And the status route let a restaurant owner mark *another
+restaurant's* order as delivered — which, in my schema, also flipped it to
+`PAID`.
+
+The fix is unglamorous:
+
+```ts
+const u = req.user!
+let allowed = u.role === 'SUPER_ADMIN'
+  || order.customerId === u.id
+  || order.restaurant.ownerId === u.id
+
+if (!allowed && u.role === 'RIDER') {
+  const rider = await prisma.rider.findUnique({ where: { userId: u.id } })
+  allowed = !!rider && order.riderId === rider.id
+}
+
+if (!allowed) {
+  return res.status(403).json({ success: false, message: 'Not your order' })
+}
+```
+
+This bug has a name — IDOR — and it is the most common hole in hand-rolled
+APIs. It survives because the happy path never triggers it. Your own account
+only ever opens your own orders, so you never see the problem in testing.
+
+## Two: coupons could be used forever
+
+My schema was careful. `Coupon` had `usageLimitPerUser`, `totalUsageLimit`,
+`timesUsed`, `firstOrderOnly`. Someone had thought hard about the rules.
+
+The checkout code read exactly two of those fields: is it active, and is it
+within its dates. Everything else was decoration.
+
+So `FIRST10` — first order only, one per customer — worked on your fortieth
+order, forever, on every account. `timesUsed` sat at zero because nothing ever
+incremented it.
+
+Writing the column is not enforcing the rule. If the check does not exist in
+the code path that spends the coupon, the column is a comment.
+
+```ts
+if (coupon.totalUsageLimit != null && coupon.timesUsed >= coupon.totalUsageLimit) {
+  return res.status(400).json({ success: false, message: 'Coupon limit reached' })
+}
+
+const userUses = await prisma.order.count({
+  where: { customerId: req.user!.id, couponCode: code },
+})
+if (userUses >= coupon.usageLimitPerUser) {
+  return res.status(400).json({ success: false, message: 'Already used' })
+}
+
+if (coupon.firstOrderOnly) {
+  const prior = await prisma.order.count({ where: { customerId: req.user!.id } })
+  if (prior > 0) {
+    return res.status(400).json({ success: false, message: 'First order only' })
+  }
+}
+```
+
+And then, in the same transaction that creates the order, actually increment
+`timesUsed`. Otherwise you have written the check and still not closed the
+hole.
+
+## Three: paid toppings were free
+
+The order builder walked the cart, looked up each item's price from the
+database — good — and then did this with the customisations:
+
+```ts
+customizations: item.customizations || [],
+```
+
+It stored them. It never priced them. Extra cheese, large size, added
+protein: recorded on the ticket for the kitchen, charged at zero.
+
+The kitchen makes the expensive version. The customer pays for the cheap one.
+Nothing errors, nothing looks wrong in the dashboard, and the margin quietly
+disappears.
+
+The fix is to price toppings the same way as everything else — from the
+database, using IDs the client sends rather than prices the client sends:
+
+```ts
+const selected = menuItem.toppingGroups
+  .flatMap((g) => g.toppings)
+  .filter((t) => (item.toppingIds ?? []).includes(t.id))
+
+const surcharge = selected.reduce((sum, t) => sum + (t.isFree ? 0 : t.extraPrice), 0)
+const itemTotal = (unitPrice + surcharge) * quantity
+```
+
+Note what the client is trusted with: **which** toppings, never **how much**
+they cost.
+
+## The thread running through all three
+
+Every one of these passed a manual test. Order food, it works. Apply a coupon,
+it works. Add toppings, the kitchen gets the right ticket.
+
+They only appear when you ask a different question. Not *does this work*, but
+*what happens if someone does this on purpose?*
+
+- Who else can call this with a different ID?
+- Which of these database columns is actually read by code?
+- Which numbers come from the client, and would I notice if they lied?
+
+That third question is the one I now ask first. Anything involving money —
+prices, discounts, totals — gets computed on the server from server data. The
+client may say *what* it wants. It never says *what it costs*.
+
+The audit took an afternoon. Shipping any one of these to real customers would
+have cost considerably more.
