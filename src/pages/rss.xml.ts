@@ -10,6 +10,9 @@ export async function GET(context: APIContext) {
     description:
       'Practical writing on web development — Next.js, Astro, TypeScript and the craft of shipping software.',
     site: context.site ?? 'https://sk-blog-nextjs-8fw1.vercel.app',
+    // Feed readers ignore this; a person who opens the URL in a browser gets a
+    // readable page instead of a wall of XML.
+    stylesheet: '/rss.xsl',
     items: posts.map((post) => ({
       title: post.data.title,
       description: post.data.description,

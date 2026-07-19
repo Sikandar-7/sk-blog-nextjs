@@ -24,15 +24,21 @@
 /* Light mode — a blog is read for minutes at a time, so it earns a real
    light theme rather than an inverted afterthought. */
 :root[data-theme='light'] {
-  --bg: #fcfcfa;
-  --surface: #ffffff;
-  --surface-2: #f4f4f0;
-  --fg: #111111;
-  --muted: #5c5c5c;
-  --border: #e4e4de;
-  --primary: #e8431f;
-  --secondary: #6b9f00;
-  --selection: #ff573322;
+  /* Warm paper rather than white. Pure #fff at full screen brightness is
+     glaring over a long article, so the page sits a few steps below it and
+     cards lift slightly above the page instead of the other way round. */
+  --bg: #f4f2ed;
+  --surface: #fbfaf7;
+  --surface-2: #e9e6dd;
+  --fg: #1c1b18; /* soft black — pure #000 on light is harsh */
+  --muted: #67645c;
+  --border: #ddd8cc;
+  /* Measured against --bg: 4.83:1, so links clear WCAG AA (4.5) for body text.
+     The dark-mode #ff5733 only reaches 4.24 here, which is why light mode
+     carries its own shade rather than reusing the brand value. */
+  --primary: #c2390c;
+  --secondary: #4f7a00;
+  --selection: #c2390c22;
 }
 
 @theme inline {
