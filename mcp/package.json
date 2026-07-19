@@ -1,0 +1,12 @@
+{
+  "name": "sk-blog-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server for authoring SK Blog articles",
+  "bin": { "sk-blog-mcp": "server.mjs" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "gray-matter": "^4.0.3"
+  }
+}
