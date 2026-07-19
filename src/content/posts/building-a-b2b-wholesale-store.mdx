@@ -1,0 +1,106 @@
+---
+title: 'Building a B2B Wholesale Store: Why Retail E-Commerce Rules Do Not Apply'
+description: 'A mobile parts wholesaler needed an online store — but wholesale works nothing like retail. Prices are private, buyers are vetted, and the checkout is only half the job.'
+publishedAt: 2026-07-20
+category: 'Engineering'
+tags: ['ecommerce', 'b2b', 'case-study']
+---
+
+Most e-commerce advice assumes retail: anyone can browse, everyone sees the
+same price, and the goal is to get a stranger to buy in one visit.
+
+Wholesale breaks all three assumptions. When I built an online store for a
+mobile parts wholesaler, almost every default in a standard e-commerce setup
+was wrong for them — and understanding *why* mattered more than any technical
+decision I made afterwards.
+
+## The problem the business actually had
+
+The business sells phone parts — screens, LCDs, batteries, accessories — to
+repair shops, not to phone owners. Orders were arriving over WhatsApp: a shop
+owner would message asking what was in stock, someone would reply with prices,
+and the order would be assembled by hand from a chat thread.
+
+That works until it does not. Stock questions get answered from memory. Prices
+get quoted slightly differently to different shops. Orders get missed because
+they arrived at midnight in a thread with forty other messages.
+
+They did not need "a website". They needed the ordering process to stop living
+in someone's head.
+
+## Why wholesale prices cannot be public
+
+This is the requirement that changes everything.
+
+A wholesaler's prices are commercially sensitive. Publishing them means every
+competitor knows your margins, and every retail customer who finds the site
+asks why the shop down the road charges triple.
+
+So the store has two states. A visitor who has not been approved sees the
+catalogue — products, photos, specifications, stock availability — and where
+the price should be, a prompt to register and get approved. An approved buyer
+sees real wholesale pricing on the same pages.
+
+That single rule ripples outward. Registration is not a formality that gets
+you a faster checkout; it is a gate a human decides on. There is an approval
+step where the business confirms this is a real repair shop. Only then do
+prices appear.
+
+It also means "logged in" and "allowed to see prices" are two different
+things, and the system has to keep them separate everywhere — product pages,
+search results, the cart, order confirmations.
+
+## Stock is a promise, not a number
+
+In retail, an out-of-stock item is a mild annoyance. In wholesale it is a
+broken promise to a business that has already told a customer their phone will
+be fixed today.
+
+So stock information had to be present everywhere a decision gets made, not
+just on the product page. Every listing shows whether an item is in stock,
+running low, or gone. Quantity selectors will not let you add more than
+actually exists. The same numbers appear on the listing and on the product
+page, because a buyer who sees "in stock" in search and "sold out" after
+clicking has learned not to trust the site.
+
+Low stock gets its own state rather than being lumped in with "available".
+A shop ordering twenty screens needs to know that only three are left *before*
+they build their week around it.
+
+## The order does not end at checkout
+
+The part I underestimated: for this business, checkout is the middle of the
+process, not the end.
+
+After an order is placed, somebody has to pick it, pack it, confirm it with
+the buyer, and arrange delivery. That conversation still happens on WhatsApp,
+because that is where the buyers are and no software was going to change that.
+
+So rather than fight it, the admin side was built to feed it. From an order,
+staff can share the full details straight to WhatsApp, and export order data
+for their own records. The admin panel also shows every order a particular
+customer has ever placed, because the useful question is rarely "what is in
+this order" — it is "is this the shop that had the problem last month?"
+
+Fighting the customer's existing habits is usually a losing move. Meeting them
+where they already are costs less and works better.
+
+## What I would tell someone starting a similar project
+
+**Ask who is allowed to see what, before anything else.** In retail that
+question is boring. In B2B it defines the entire data model, and retrofitting
+it is painful.
+
+**Find out where the real conversation happens.** For this business it was
+WhatsApp. Any feature that ignored that was going to be worked around.
+
+**Treat stock as a trust problem.** The number itself is easy. Showing it
+consistently everywhere, so buyers believe it, is the actual work.
+
+**Expect the admin side to be half the project.** The storefront is what you
+show people. The admin panel is what the business uses eight hours a day, and
+it is where the time goes if you are honest about the scope.
+
+The store is live and taking orders. The measure of success is not the
+technology — it is that nobody has to scroll back through a chat thread to
+work out what somebody ordered.

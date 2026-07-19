@@ -1,0 +1,110 @@
+---
+title: 'Shipping a Client Platform: Four Codebases, One Product'
+description: 'A WhatsApp business platform delivered for a client — a dashboard, an API, a marketing site and a mobile app. What that actually takes, and the parts that are nothing to do with writing software.'
+publishedAt: 2026-07-20
+category: 'Career'
+tags: ['case-study', 'client-work', 'deployment']
+---
+
+A client platform is a different job from a side project. Somebody is paying,
+somebody else will use it, and "it works on my machine" stops being a joke and
+becomes a liability.
+
+I built a WhatsApp business platform for a client — a web dashboard, an API,
+a marketing site and an Android app. Here is what that involved, including the
+parts that had nothing to do with writing code.
+
+## Four pieces, four reasons
+
+The product is one thing to the customer and four codebases to me:
+
+**The dashboard** — where the work happens. Inbox, contacts, campaigns,
+templates, automated replies, analytics, team management, billing. Thirteen
+screens, each one a place somebody spends their day.
+
+**The API** — the actual product logic. Accounts, plans, message handling,
+everything the dashboard and the app both talk to.
+
+**The marketing site** — what a prospect sees before they sign up. Different
+audience, different job, deliberately separate so a pricing tweak never risks
+the product.
+
+**The mobile app** — because the people using this are not at a desk. An
+inbox is only useful if it is in your pocket.
+
+Splitting them is not architectural fashion. Each one deploys differently,
+changes at a different rate, and breaks in a different way. Keeping them
+separate means a marketing page edit cannot take down the API.
+
+## Plan gating is a product feature, not a checkbox
+
+This platform sells subscriptions, which means some accounts can do things
+others cannot.
+
+It is tempting to treat that as a small thing: check a flag, hide a button.
+It is not small, because the check has to be somewhere the customer cannot
+reach. A gate implemented only in the dashboard is a suggestion — anyone can
+call the API directly and skip it.
+
+The other half is expiry. An account can be approved today and lapsed next
+month, and those are different states needing different treatment. Blocking
+somebody the instant their plan lapses, with no warning, is how you turn a
+renewal into a complaint. A warning before expiry costs little and prevents
+that conversation.
+
+There is a general lesson here that took me too long: **a paywall is a
+customer relationship, not an if-statement.** How somebody finds out they have
+lost access matters as much as the fact that they have.
+
+## Deployment is where client work gets real
+
+A side project deploys when you push. A client platform on its own server
+does not.
+
+This one runs on a VPS: the API as a managed service so it restarts on reboot,
+the dashboard served as static files, a database on the same box, certificates
+that need renewing. The marketing site sits on a platform that redeploys on
+push, which by comparison feels like cheating.
+
+Two things I would insist on from day one next time.
+
+**Learn to read the logs before you need them.** When something breaks in
+production, guessing costs a round-trip each time. Tailing the actual service
+log usually names the problem in seconds — a value too large for its column, a
+missing environment variable, a query failing on a schema that never got
+updated. I lost more time to guessing than to any bug.
+
+**Schema changes need a real process.** The models in code were updated many
+times; the live database was updated by hand. Those two drift, quietly, and
+then a feature works locally and fails in production for reasons that look
+like magic. Every model change needs a matching plan for the live database,
+written down, before it ships.
+
+## Working with a client, not just for one
+
+The technical parts were the predictable parts. The rest:
+
+**Hand over commands, not mysteries.** This client preferred to run deployment
+steps himself. That is a good instinct — it is his server — so my job was to
+give exact commands rather than SSH in and leave him unsure what changed.
+
+**Bugs are found by users, in the order that annoys them most.** Not in the
+order I would rank them. A theme toggle sitting on top of the send button is a
+smaller bug than a broken paywall, and a bigger annoyance, because it happens
+every single message.
+
+**Consistency reads as quality.** Two of the thirteen screens were built from
+a different template — own navigation, no top bar. Nothing was broken. It
+still felt unfinished, because people notice when a product stops behaving
+like itself. Unifying them changed no functionality and improved the product.
+
+## What I would tell my earlier self
+
+Budget real time for the boring half. Deployment, environment configuration,
+database changes, certificate renewal, the mobile build that fails for reasons
+unrelated to your code. On this project that was closer to half the effort
+than the quarter I would have guessed.
+
+That half is also what separates a demo from something a business can run on.
+Anybody can build the dashboard. Making it survive a reboot, a lapsed plan and
+a schema change is the part they are actually paying for.

@@ -1,0 +1,108 @@
+---
+title: 'Turning WhatsApp Into a Shared Team Inbox'
+description: 'Most small businesses run sales on one WhatsApp number and one phone. Building a CRM around that means solving a problem the app itself was never designed for.'
+publishedAt: 2026-07-20
+category: 'Architecture'
+tags: ['whatsapp', 'saas', 'multi-tenant', 'case-study']
+---
+
+Walk into most small businesses in Pakistan and their sales pipeline is a
+WhatsApp thread on somebody's personal phone. Enquiries, prices,
+negotiations, follow-ups, complaints — all of it, in one app, on one device.
+
+It works better than outsiders expect. It also fails in exactly the ways you
+would guess: only one person can answer, nothing is recorded anywhere else,
+and when that person is on leave the business is deaf.
+
+I have been building a CRM around this reality rather than against it.
+
+## What the product actually is
+
+A shared inbox on the official WhatsApp Business API, with the things a
+business needs once more than one person is answering:
+
+- **Shared inbox** — several agents working one number, with conversations
+  assigned to specific people so two agents do not answer the same customer
+- **Contacts** with tags and custom fields, so a conversation is attached to a
+  person with a history
+- **Sales pipelines** — a Kanban board where a deal moves through stages, each
+  card linked back to the conversation it came from
+- **Broadcasts** for sending an approved message to a segment
+- **Automations** — no-code rules for the replies that are always the same
+
+The bet is simple: businesses will not leave WhatsApp, so the software should
+go to WhatsApp rather than trying to move them somewhere else.
+
+## The multi-tenant problem nobody warns you about
+
+This is a product sold to many businesses. Each one connects their own
+WhatsApp number, and each one's messages must be invisible to everyone else.
+
+The obvious version of that is data isolation — every query scoped to an
+account. That part you plan for.
+
+The version that catches you out is **configuration** isolation. Connecting to
+WhatsApp requires credentials from Meta: an access token, a phone number
+identifier, and an app identifier. It is very natural to treat that app
+identifier as a property of *your platform* and store it once, in an
+environment variable, for everybody.
+
+It is not. It belongs to each customer's own Meta setup, and it has to match
+the token they gave you. One shared value means every customer after the first
+gets rejected by Meta with an error that makes no sense from their side. The
+fix is not complicated — the setting moves from the platform to the account —
+but you only find it when a second real customer arrives, which is a bad time
+to find things.
+
+**The rule I took from it:** anything that comes from the customer's own
+account with a third party belongs to their record, not your config. If it
+identifies *them*, it cannot live in a variable that identifies *you*.
+
+## Which settings deserve a lock
+
+The app has a workspace lock: some settings need extra credentials to change,
+so a junior team member cannot rewire the WhatsApp connection.
+
+The first version put the whole WhatsApp section behind that lock, which was
+tidy and wrong. Updating the business profile photo lived there. So did the
+"About" text. A team member who wanted to change a picture had to ask for the
+credential that also unlocks the access token.
+
+That is the fastest way to teach people to share admin passwords.
+
+The lock now covers only genuinely dangerous settings — API credentials, the
+things that could break the connection or leak access. Ordinary profile
+editing sits outside it, where anyone on the team can reach it.
+
+**Group permissions by consequence, not by topic.** "Everything WhatsApp"
+looks like a sensible category on a settings page and is a poor security
+boundary. "Everything that could break the account" is the boundary that
+matters, even though it splits a menu awkwardly.
+
+## Security is not a one-time task
+
+This product is built on an open-source foundation, which means upstream
+security fixes appear over time. Several genuinely serious ones have landed:
+a permissions rule that let a user promote themselves, a search function that
+could read across accounts, write routes that checked *whether* you were
+signed in but not *what you were allowed to do*.
+
+Each of those is the same shape as the mistakes I have made independently.
+Authentication answers "who are you". Authorisation answers "may you do this".
+Systems that confuse the two look completely fine until somebody asks the
+second question on purpose.
+
+Pulling those fixes in is not glamorous work and it never shows up in a demo.
+On a product other businesses depend on, it is the work.
+
+## Where it stands
+
+It runs, it handles real conversations, and it has companion mobile apps for
+teams that want the inbox on a phone. The parts I am least finished with are
+the same parts every SaaS is least finished with: onboarding, and making the
+first ten minutes obvious enough that nobody needs to be shown.
+
+The thing I keep coming back to is that this product exists because of a habit,
+not a technology. Businesses chose WhatsApp on their own. The software's job
+is to make that choice work at ten people instead of one — not to talk them
+out of it.
