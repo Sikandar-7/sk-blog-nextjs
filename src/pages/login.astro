@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AuthForm from '../components/islands/AuthForm.tsx';
+---
+
+<BaseLayout
+  title="Sign in"
+  description="Sign in to write and publish on SK Blog."
+  noindex={true}
+>
+  <section class="mx-auto w-full max-w-md px-6 py-20 sm:py-28">
+    <div class="reveal">
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">Welcome back</p>
+      <h1 class="mb-3 font-display text-4xl font-extrabold tracking-tight">Sign in</h1>
+      <p class="mb-8 text-muted">Pick up where you left off and keep writing.</p>
+
+      <!-- client:load — this form is the whole point of the page -->
+      <AuthForm mode="login" client:load />
+    </div>
+  </section>
+</BaseLayout>

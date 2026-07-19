@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Editor from '../components/islands/Editor.tsx';
+---
+
+<BaseLayout
+  title="Write an article"
+  description="Write and publish an article on SK Blog."
+  noindex={true}
+>
+  <section class="mx-auto w-full max-w-3xl px-6 py-16 sm:py-20">
+    <div class="mb-8">
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">New article</p>
+      <h1 class="font-display text-4xl font-extrabold tracking-tight">Write</h1>
+    </div>
+
+    <Editor client:load />
+  </section>
+</BaseLayout>

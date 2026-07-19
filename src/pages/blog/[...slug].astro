@@ -2,6 +2,7 @@
 import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
+import Comments from '../../components/islands/Comments.tsx';
 import {
   getPublishedPosts,
   getRelatedPosts,
@@ -36,6 +37,39 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
     aria-hidden="true"
   >
   </div>
+
+  {/* Reading progress — pure CSS width driven by one tiny scroll listener */}
+  <div
+    id="reading-progress"
+    class="fixed left-0 top-0 z-[60] h-[3px] w-0 bg-primary transition-[width] duration-100 ease-out"
+    aria-hidden="true"
+  >
+  </div>
+
+  <script is:inline>
+    (() => {
+      const bar = document.getElementById('reading-progress');
+      if (!bar) return;
+      let ticking = false;
+      const update = () => {
+        const h = document.documentElement;
+        const max = h.scrollHeight - h.clientHeight;
+        bar.style.width = max > 0 ? `${(h.scrollTop / max) * 100}%` : '0%';
+        ticking = false;
+      };
+      addEventListener(
+        'scroll',
+        () => {
+          if (!ticking) {
+            ticking = true;
+            requestAnimationFrame(update);
+          }
+        },
+        { passive: true }
+      );
+      update();
+    })();
+  </script>
 
   <article class="mx-auto max-w-6xl px-5 py-14">
     <a
@@ -141,6 +175,12 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </div>
       )
     }
+
+    {/* client:visible — the comment thread only downloads once a reader
+        actually scrolls to it, so the article itself stays weightless */}
+    <div class="mx-auto max-w-measure">
+      <Comments slug={post.id} client:visible />
+    </div>
   </article>
 
   {
