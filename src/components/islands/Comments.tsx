@@ -25,13 +25,38 @@ export default function Comments({ slug }: Props) {
 
   async function load() {
     if (!supabase) return;
+
     const { data, error } = await supabase
       .from('comments')
-      .select('id, body, created_at, author_id, profiles(username, full_name, avatar_url)')
+      .select('id, body, created_at, author_id')
       .eq('post_slug', slug)
       .order('created_at', { ascending: false });
-    if (error) setError(error.message);
-    else setComments((data as unknown as CommentRow[]) ?? []);
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    const rows = (data as CommentRow[]) ?? [];
+
+    // Display names come from `public_profiles`, a view that deliberately
+    // exposes only id/username/name/avatar — the profiles table itself holds
+    // emails and is readable only by its owner and admins.
+    const ids = [...new Set(rows.map((r) => r.author_id))];
+    if (ids.length > 0) {
+      const { data: people } = await supabase
+        .from('public_profiles')
+        .select('id, username, full_name, avatar_url')
+        .in('id', ids);
+
+      const byId = new Map((people ?? []).map((p: any) => [p.id, p]));
+      rows.forEach((r) => {
+        r.profiles = byId.get(r.author_id) ?? null;
+      });
+    }
+
+    setComments(rows);
     setLoading(false);
   }
 

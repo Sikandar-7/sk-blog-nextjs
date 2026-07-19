@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AdminPanel from '../components/islands/AdminPanel.tsx';
+---
+
+<BaseLayout
+  title="Admin"
+  description="Moderation and user management for SK Blog."
+  noindex={true}
+>
+  <section class="mx-auto w-full max-w-5xl px-6 py-16 sm:py-20">
+    <div class="mb-8">
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">Admin</p>
+      <h1 class="font-display text-4xl font-extrabold tracking-tight">Control room</h1>
+      <p class="mt-3 text-muted">
+        Approve writers, review articles and moderate comments.
+      </p>
+    </div>
+
+    <AdminPanel client:load />
+  </section>
+</BaseLayout>
