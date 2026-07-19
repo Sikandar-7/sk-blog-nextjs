@@ -1,0 +1,178 @@
+---
+title: 'Order.pk — Building, Auditing and Shipping a Food Delivery Platform'
+description: 'A four-panel delivery marketplace: how the pieces fit together, the three security holes I found in my own code, the week the database vanished, and what it took to get the API deployed.'
+publishedAt: 2026-07-20
+category: 'Architecture'
+tags: ['case-study', 'marketplace', 'security', 'deployment']
+featured: true
+---
+
+Order.pk is a food delivery platform — customers order, restaurants cook,
+riders deliver, an operator watches the whole thing. Four dashboards, one
+database, one order moving between them.
+
+This is the full story of it: what the product is, the security holes I found
+in my own finished code, the week the database disappeared, and the two
+deployment failures that had nothing to do with the application at all.
+
+## 1. Four panels, one order
+
+From the outside this looks like a shopping cart with a map. Underneath it is
+four products sharing a database, because the same order means something
+different to each person looking at it.
+
+**The customer** wants to choose food quickly and then stop worrying. Before
+ordering: prices, delivery time, minimum order value. After ordering, one
+question only — where is it?
+
+**The restaurant** does not care about that journey. They need incoming orders
+in one place, accept or reject, and a way to say "ready". During a rush the
+interface either gets out of the way or staff go back to phone calls.
+
+**The rider** is outdoors, on a phone, possibly on a bike. What to pick up,
+where from, where to, mark delivered. Plus going online and offline, because
+they are not available all day. Every extra element is one more thing to tap
+while holding a helmet — the rider panel got simpler with each revision and
+improved every time.
+
+**The operator** watches the marketplace: which restaurants are active, which
+riders are online, what has been ordered today, which orders are stuck. It is
+easy to spend all your design effort on the customer app and leave the
+operator with a table of raw data. They are the one using it eight hours a day.
+
+## 2. What the server refuses to believe
+
+The interesting part of a marketplace is not the cart — it is what the
+platform declines to take on trust.
+
+A cart arrives from a browser. It knows what the customer picked. It also
+knows what *they think* it costs, and that number cannot be believed. Not
+because customers are dishonest, but because anything a browser sends can be
+edited before it arrives.
+
+So the server rebuilds the order from scratch: take the item identifiers, look
+up its own prices, apply its own rules, calculate its own total. **The client
+says what it wants; the server decides what it costs.** That covers minimum
+order values, delivery fees, discounts and extras like sizes and toppings.
+
+## 3. Status is the spine
+
+An order is not a row that gets created and forgotten. It is a small state
+machine that four people push forward:
+
+```
+pending → accepted → preparing → ready → on the way → delivered
+```
+
+Every panel is a view onto this. Two things matter here and I got both wrong
+first time: **not everyone may make every transition**, and **some transitions
+have side effects.** Marking an order delivered is also a statement about
+payment for a cash order — anything that quietly moves money deserves more
+scrutiny than a status dropdown suggests.
+
+## 4. Auditing my own code: three ways to eat for free
+
+The platform worked. Orders went in, dashboards updated, everything looked
+finished. Then I read the order route properly and found three separate ways
+to take money out of it.
+
+All three came from the same habit: **checking who someone is, and forgetting
+to check what they are allowed to touch.**
+
+### Every order was readable by everyone
+
+The endpoint that fetches a single order had an auth middleware on it, so it
+felt protected. It was not. That middleware proves the caller is *a* user. It
+never asked whether they were *this order's* user.
+
+Sign in with any account, walk the order IDs, and you get other people's
+names, phone numbers and delivery addresses. That is somebody's home address,
+handed to anyone with a login. The cancel route had the same shape, so you
+could also cancel strangers' dinners.
+
+This bug has a name — IDOR — and it survives because the happy path never
+triggers it. Your own account only ever opens your own orders, so testing
+never finds it. The fix is a real ownership check: the customer who placed it,
+the restaurant that received it, the rider carrying it, or an admin. Nobody
+else.
+
+### Coupons could be used forever
+
+The database schema was careful. Coupons had a per-user limit, a total limit, a
+usage counter, a first-order-only flag. Someone had thought hard about the
+rules.
+
+The checkout code read exactly two of those fields: is it active, and is it in
+date. Everything else was decoration. So a first-order-only coupon worked on
+your fortieth order, on every account, forever — and the usage counter sat at
+zero because nothing incremented it.
+
+**Writing the column is not enforcing the rule.** If the check does not exist
+in the code path that spends the coupon, the column is a comment.
+
+### Paid toppings were free
+
+The order builder looked up each item's price from the database — good — and
+then stored the customisations without pricing them. Extra cheese, large size,
+added protein: recorded on the ticket for the kitchen, charged at zero.
+
+The kitchen makes the expensive version, the customer pays for the cheap one,
+nothing errors, and the margin quietly disappears. Toppings now price from the
+database like everything else: the client sends *which* toppings, never *how
+much* they cost.
+
+## 5. The week the database vanished
+
+Some months after building it, I opened the live demo. The frontend loaded
+perfectly. Every list was empty.
+
+The free-tier database behind it had been deleted. Nothing in the application
+was broken — the application simply had nothing to talk to. Worse, the site
+did not say so. It rendered a beautifully styled page containing zero
+restaurants, which looks far more like a bug in your code than a missing
+backend.
+
+Two things came out of that. First, the front end now **degrades honestly** —
+if the API cannot be reached, sections fall back rather than silently
+rendering nothing. Second, recreating the database was survivable only because
+the schema lived in the repo as code. Rebuilding it was one command, and
+seeding it was another. Had the schema existed only inside a dashboard
+somebody clicked through, it would have been gone.
+
+## 6. Getting the API deployed
+
+The backend had a deployment config sitting in the repo. Someone had clearly
+set it up. It had never actually been deployed — and when I tried, it failed
+twice, neither time in the application code.
+
+**The framework preset was pinned.** The host was still looking for the
+framework this project used to be, and no amount of correcting the package
+manifest changed its mind, because that setting is saved per project rather
+than re-detected per build.
+
+**The deployed entry point was outside the compiler's reach.** The serverless
+entry file lived in one folder while the TypeScript config declared the
+project to be another folder, and only that one. Locally this never surfaced —
+typechecking obediently ignored a file it had been told not to look at. My
+checks passed while the file that actually gets deployed was never checked at
+all.
+
+Both had been wrong for months. Neither could be seen locally, because local
+development never ran the path that used them. Which is the real lesson:
+**unused configuration is untested configuration.** A deploy config that has
+never deployed is not evidence that deployment works — only that somebody once
+intended it to.
+
+## What I would carry into the next marketplace
+
+- Decide early **what the server refuses to trust**, and put everything
+  involving money on that list
+- Ask, for every route, **"who else can call this with a different ID?"**
+- Check which database columns are actually *read* by code — schemas
+  accumulate good intentions
+- Keep the schema in the repo, because one day the database will not be there
+- Treat deploy config you have never run as unknown, not working
+
+None of the hard parts were technical novelties. They were about deciding what
+to trust, who may change what, and keeping four interfaces honest about one
+shared reality.

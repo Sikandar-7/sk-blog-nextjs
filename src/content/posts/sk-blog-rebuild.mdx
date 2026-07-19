@@ -1,0 +1,136 @@
+---
+title: 'SK Blog — Rebuilding This Site After Its Backend Died'
+description: 'This blog ran on headless WordPress until the WordPress disappeared. Rebuilding it on Astro cut an article page from about 87 KB of JavaScript to 4 KB — and turned it into a small community platform along the way.'
+publishedAt: 2026-07-20
+category: 'Architecture'
+tags: ['astro', 'supabase', 'performance', 'case-study']
+---
+
+The site you are reading is itself a project, and it is the one I rebuilt most
+recently — because the previous version quietly stopped working.
+
+This is what it was, why it broke, what I replaced it with, and the measured
+difference.
+
+## 1. The blog that had no articles
+
+The old version was a Next.js frontend talking to a headless WordPress
+install. It looked completely fine. It also said, on the homepage:
+
+> **0 ARTICLES PUBLISHED** — No posts yet. Add posts in WordPress Admin.
+
+The WordPress behind it was gone. The API returned a plain 404, and the site
+had been rendering an empty shell for who knows how long. Nothing errored.
+Nothing alerted. The site just quietly said it had nothing to say.
+
+There is a lesson in that beyond WordPress: **a frontend with a dead backend
+does not look broken, it looks empty.** That is much harder to notice, both
+for you and for anyone visiting.
+
+## 2. Choosing what replaces it
+
+The obvious move was to point it at another server. I did not want to, for the
+same reason it broke the first time — anything with a backend to lose is a
+thing that will eventually lose it.
+
+So articles became files in the repository. Publishing is a commit. There is
+no database that can pause, no host that can expire, no admin panel that can
+go missing. The worst case is that the site keeps working exactly as it is.
+
+For the framework I went with Astro rather than staying on Next.js, and I
+measured rather than assumed.
+
+Next.js renders with React, and React runs in the browser. Even a page of pure
+text ships the framework, parses it, and hydrates it. My other project's build
+reports the floor plainly: **87.1 kB of shared JavaScript on every page**,
+including pages with nothing to click.
+
+Astro renders to HTML at build time and ships no JavaScript unless asked.
+After the rebuild, an article page here references exactly one script — about
+**4 KB**, and that is a link prefetcher, not a framework.
+
+I will be honest about the caveat, because it matters: **a well-built static
+Next.js blog is also fast.** The biggest performance factor is not the
+framework, it is whether pages are pre-rendered or assembled per request. A
+static Next.js site beats a database-backed Astro site every time. The
+framework is the second decision, not the first.
+
+## 3. Interactive parts, without the cost
+
+A blog is not entirely static. This one has comments, an editor, accounts. All
+of that needs JavaScript.
+
+If I had put it in the page, the saving would have evaporated. Instead each
+interactive piece is an island that loads on its own terms. Comments download
+only when a reader scrolls to them — someone who reads half an article and
+leaves never downloads the comment code at all.
+
+The result is a clean split:
+
+| Page | JavaScript up front |
+| --- | --- |
+| Article | ~12 KB |
+| The editor | 76 KB, and only there |
+
+The editor pulls in a markdown parser and a sanitiser. That is fine — it is a
+tool for a handful of people. What matters is that a reader never pays for it.
+
+## 4. Turning it into a community platform
+
+The old site had login and registration pages wired to the dead WordPress, so
+somebody had intended this to be more than a personal blog. I kept that
+intent and rebuilt it properly.
+
+There are now accounts, a markdown editor with live preview and autosave,
+per-author dashboards, comments, and an admin panel for moderation.
+
+The interesting decisions were not about features.
+
+**New accounts start with nothing.** Signing up gets you a read-only account.
+An admin grants writing access before you can publish or even comment. The
+opposite default — everyone can post immediately — is how a small blog becomes
+a spam host in a week.
+
+**The rules live in the database, not the interface.** Hiding a page in the UI
+is not access control; anyone can call the API directly. Every permission is a
+database policy, so an unapproved account is refused even if it bypasses the
+site entirely.
+
+**Approval is one action.** Granting the role and lifting the block happen in
+a single update, so an account can never end up half-approved — a state that
+looks fine in a table and fails confusingly in practice.
+
+## 5. The key that lives in your JavaScript
+
+This site talks to its database directly from the browser, which means a key
+sits in the bundle where anyone can read it.
+
+That is by design — that key identifies the project, not a person, and what an
+anonymous caller may do is decided by database policies. But it is only safe
+if those policies are right, which is worth testing rather than assuming.
+
+I tested mine by trying to break in with my own public key: writing a post as a
+user that does not exist, reading tables I should not see. The write came back
+refused by policy, which is the sound of a database defending itself.
+
+That same test found a real mistake. I had made profiles world-readable early
+on so comment authors could show a name — reasonable. Later I added email
+addresses to the same table for the admin panel. The policy did not change,
+because policies apply to rows, not columns. Every user's email was readable
+by anyone who viewed source.
+
+The fix was to stop treating one table as one audience: full rows for yourself
+and admins, and a separate public view exposing only a name and avatar.
+Verifying it took one command, and the answer was an empty list.
+
+## 6. What the whole thing costs to run
+
+Nothing, which is partly the point.
+
+Static hosting on a free tier, a database on a free tier, fonts served from my
+own domain rather than a third party, and no server sitting there waiting for
+requests. The only recurring cost is writing.
+
+That is also the honest reason it will outlive the previous version. The old
+blog needed a WordPress somewhere for its content to exist. This one needs a
+git repository, and the content is in it either way.
