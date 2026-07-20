@@ -30,6 +30,27 @@ business needs once more than one person is answering:
 - **Broadcasts** for sending an approved message to a segment
 - **Automations** — no-code rules for the replies that are always the same
 
+### Three things that sound the same and are not
+
+This took a while to get straight, and the naming matters because customers
+have to choose between them:
+
+**Flows** are reactive. An inbound message arrives, and a flow decides what
+happens next — the chatbot case. Nothing runs until a customer writes to you.
+
+**Automations** are rules about your own data. A contact gets tagged, a deal
+moves stage, a field changes, and something follows. They are not conversation
+scripts; they are the plumbing between records.
+
+**Broadcasts** are a one-shot send to a filtered segment. No branching, no
+trigger, no waiting — pick who, pick the approved message, send.
+
+Collapsing these into one "automation" feature would have been simpler to
+build and much harder to use, because the mental model of each is genuinely
+different. Users do not ask "how do I automate this" — they ask "how do I
+reply when someone messages me", which is a flow, or "how do I tell everyone
+about the sale", which is a broadcast.
+
 The bet is simple: businesses will not leave WhatsApp, so the software should
 go to WhatsApp rather than trying to move them somewhere else.
 
