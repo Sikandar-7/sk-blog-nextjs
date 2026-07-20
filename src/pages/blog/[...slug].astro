@@ -29,6 +29,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
   publishedAt={post.data.publishedAt.toISOString()}
   author={post.data.author}
   noindex={post.data.draft}
+  image={`/og/${post.id}.png`}
 >
   <!-- reading progress -->
   <div

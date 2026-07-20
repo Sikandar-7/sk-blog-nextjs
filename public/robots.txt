@@ -1,0 +1,45 @@
+# SK Blog — https://sk-blog-nextjs-8fw1.vercel.app
+
+User-agent: *
+Allow: /
+
+# Signed-in areas: nothing here is useful in a search result, and the pages
+# are already marked noindex.
+Disallow: /login
+Disallow: /signup
+Disallow: /write
+Disallow: /dashboard
+Disallow: /admin
+
+# Answer engines are welcome. The whole point of writing these articles is for
+# them to be found and quoted, whether that happens in a search result or in
+# an assistant's answer — so the assistants get the same access as the
+# crawlers, deliberately.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://sk-blog-nextjs-8fw1.vercel.app/sitemap-index.xml
