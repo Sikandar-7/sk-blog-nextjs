@@ -5,9 +5,20 @@ import preact from '@astrojs/preact';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
+// The canonical origin, read at build time so each host can declare its own.
+//
+// `site` is not decoration: sitemap.xml, the RSS feed and every canonical tag
+// are built from it. Hardcoding one host means the moment the site is served
+// from anywhere else, it keeps announcing the old address — and nothing warns
+// you, because the build succeeds and the pages look fine.
+//
+// Set PUBLIC_SITE_URL in the host's environment (Dokploy, Vercel, wherever).
+// The fallback keeps local dev and any un-configured build working.
+const SITE_URL = process.env.PUBLIC_SITE_URL || 'https://sk-blog-nextjs-8fw1.vercel.app';
+
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://sk-blog-nextjs-8fw1.vercel.app',
+  site: SITE_URL,
 
   // Fully static output: every article is pre-rendered to HTML at build time and
   // served straight from the CDN. Anything interactive (auth, comments, likes,
