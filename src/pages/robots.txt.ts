@@ -1,4 +1,5 @@
 import type { APIContext } from 'astro';
+import { PRIVATE_ROUTES } from '../lib/private-routes';
 
 /**
  * /robots.txt — generated rather than served from `public/`.
@@ -18,8 +19,9 @@ export async function GET(context: APIContext) {
   const site = context.site?.toString().replace(/\/$/, '') ?? '';
 
   /** Signed-in areas: nothing here is useful in a search result, and the pages
-   *  are already marked noindex. */
-  const disallowed = ['/login', '/signup', '/write', '/dashboard', '/admin'];
+   *  are already marked noindex. Shared with the sitemap filter in
+   *  astro.config so the two cannot disagree. */
+  const disallowed = PRIVATE_ROUTES;
 
   /** Answer engines are welcome. The whole point of writing these articles is
    *  for them to be found and quoted, whether that happens in a search result

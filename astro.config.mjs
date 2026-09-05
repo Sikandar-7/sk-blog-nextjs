@@ -5,6 +5,8 @@ import preact from '@astrojs/preact';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
+import { isPrivateRoute } from './src/lib/private-routes';
+
 // The canonical origin, read at build time so each host can declare its own.
 //
 // `site` is not decoration: sitemap.xml, the RSS feed and every canonical tag
@@ -26,7 +28,14 @@ export default defineConfig({
   // reader never waits on a database query.
   output: 'static',
 
-  integrations: [mdx(), preact(), sitemap()],
+  integrations: [
+    mdx(),
+    preact(),
+    // Signed-in routes are disallowed in robots.txt; submitting them here too
+    // asks Google to index pages it is simultaneously told not to read, which
+    // Search Console reports as an error. Same list drives both files.
+    sitemap({ filter: (page) => !isPrivateRoute(new URL(page).pathname) }),
+  ],
 
   vite: {
     plugins: [tailwindcss()],
