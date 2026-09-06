@@ -1,6 +1,10 @@
 ---
 const year = new Date().getFullYear();
+// Two different links on purpose. "Elsewhere" is the author's own portfolio;
+// the "Built by" credit points at the studio, because this site is a Buraq Tech
+// demo and that credit is the only route a reader has back to us.
 const portfolio = 'https://portfolio-five-black-18.vercel.app';
+const builder = 'https://buraqtech.uk';
 ---
 
 <footer class="mt-24 border-t border-border">
@@ -61,11 +65,11 @@ const portfolio = 'https://portfolio-five-black-18.vercel.app';
       <p>
         Built by{' '}
         <a
-          href={portfolio}
+          href={builder}
           target="_blank"
           rel="noopener noreferrer"
           class="font-semibold text-primary transition-colors hover:text-fg"
-          >Quantum Labs</a
+          >Buraq Tech</a
         >
       </p>
     </div>
